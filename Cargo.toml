@@ -4,10 +4,11 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-dbase = { git = "https://github.com/casperhart/dbase-rs.git", features = [
+dbase = { git = "https://github.com/tmontaigu/dbase-rs.git", branch = "master", features = [
     "datafusion",
+    "yore",
 ] }
-datafusion = { version = "31" }
+datafusion = { version = "46" }
 tokio = "1.28.0"
 csv = "1.2.1"
 rustyline = { version = "11.0.0", features = ["with-file-history"] }

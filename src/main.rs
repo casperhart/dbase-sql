@@ -2,8 +2,7 @@ use clap::{ArgGroup, Parser};
 use datafusion::arrow::csv::writer::WriterBuilder;
 use datafusion::arrow::error::Result;
 use datafusion::arrow::record_batch::RecordBatch;
-use datafusion::execution::context::SessionState;
-use datafusion::execution::runtime_env::{RuntimeConfig, RuntimeEnv};
+use datafusion::execution::SessionStateBuilder;
 use datafusion::prelude::*;
 use dbase::DbaseTableFactory;
 use dirs::home_dir;
@@ -49,7 +48,7 @@ enum OutputFormat {
     Table,
 }
 
-#[tokio::main]
+#[tokio::main(flavor = "current_thread")]
 async fn main() -> datafusion::error::Result<()> {
     let args = Args::parse();
 
@@ -59,17 +58,15 @@ async fn main() -> datafusion::error::Result<()> {
         }
     }
 
-    let cfg = RuntimeConfig::new();
-    let env = RuntimeEnv::new(cfg).unwrap();
-    let ses = SessionConfig::new();
-    let mut state = SessionState::with_config_rt(ses, Arc::new(env));
+    // create local execution context
+    let table_factory = Arc::new(DbaseTableFactory {});
+    let session_state = SessionStateBuilder::new()
+        .with_default_features()
+        .with_table_factory("DBASE".to_string(), table_factory)
+        .build();
 
     // add DbaseTableFactory to support "create external table stored as dbase" syntax
-    state
-        .table_factories_mut()
-        .insert("DBASE".to_string(), Arc::new(DbaseTableFactory {}));
-
-    let ctx = SessionContext::with_state(state);
+    let ctx = SessionContext::new_with_state(session_state);
 
     let output_format = match args.output_format {
         Some(c) => match c {
@@ -202,7 +199,7 @@ fn print_results(results: &[RecordBatch], delimiter: u8) -> Result<()> {
 
     let mut writer = WriterBuilder::new()
         .with_delimiter(delimiter)
-        .has_headers(true)
+        .with_header(true)
         .build(&mut handle);
 
     for batch in results {
